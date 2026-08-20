@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { FileText, Image as ImageIcon, Loader2, Settings, Sparkles, Zap } from 'lucide-react'
 import axios from 'axios'
 import AdvancedSettings from './components/AdvancedSettings'
@@ -19,7 +19,6 @@ function App() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [includeCaption, setIncludeCaption] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [findTerm, setFindTerm] = useState('')
@@ -88,8 +87,28 @@ function App() {
     }
   }
 
-  const handleCopy = useCallback(() => {
-    if (result?.text) navigator.clipboard.writeText(result.text)
+  const handleCopy = useCallback(async (text) => {
+    const value = typeof text === 'string' ? text : result?.text
+    if (!value) throw new Error('没有可复制的内容')
+
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value)
+      return true
+    }
+
+    const textarea = document.createElement('textarea')
+    textarea.value = value
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    textarea.setSelectionRange(0, textarea.value.length)
+    const copied = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    if (!copied) throw new Error('复制失败')
+    return true
   }, [result])
 
   const handleDownload = useCallback(() => {
@@ -105,7 +124,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <aside className="sidebar lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-[320px]">
+      <aside className="sidebar fixed inset-y-0 left-0 z-40 hidden w-[340px] lg:block">
         <div className="flex h-full flex-col">
           <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-6">
             <div className="rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 p-2.5 text-white shadow-lg shadow-blue-200">
@@ -142,6 +161,29 @@ function App() {
               <p className="section-label">模型资源</p>
               <ModelControl compact />
             </section>
+
+            <section>
+              <ModeSelector
+                compact
+                mode={mode}
+                onModeChange={setMode}
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                findTerm={findTerm}
+                onFindTermChange={setFindTerm}
+              />
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="section-label">高级设置</p>
+              <AdvancedSettings
+                compact
+                settings={advancedSettings}
+                onSettingsChange={setAdvancedSettings}
+                includeCaption={includeCaption}
+                onIncludeCaptionChange={setIncludeCaption}
+              />
+            </section>
           </div>
 
           <div className="mt-auto border-t border-slate-200 px-6 py-5">
@@ -150,7 +192,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="lg:pl-[320px]">
+      <main className="lg:pl-[340px]">
         <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 px-5 py-4 backdrop-blur-xl sm:px-8">
           <div className="mx-auto flex max-w-[1500px] items-center justify-between">
             <div>
@@ -175,6 +217,51 @@ function App() {
             <p className="text-sm text-slate-500">上传文件后可调整识别模式和高级参数</p>
           </div>
 
+          <div className="mb-5 space-y-3 lg:hidden">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+              <button
+                onClick={() => handleFileTypeChange('image')}
+                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold ${fileType === 'image' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}
+              >
+                <ImageIcon className="h-4 w-4" />图片
+              </button>
+              <button
+                onClick={() => handleFileTypeChange('pdf')}
+                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold ${fileType === 'pdf' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}
+              >
+                <FileText className="h-4 w-4" />PDF
+              </button>
+            </div>
+
+            <details className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4">
+                <div className="flex items-center gap-3">
+                  <Settings className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-semibold text-slate-900">识别模式与高级设置</span>
+                </div>
+                <span className="text-xs text-blue-600">展开</span>
+              </summary>
+              <div className="space-y-4 border-t border-slate-100 p-4">
+                <ModeSelector
+                  mode={mode}
+                  onModeChange={setMode}
+                  prompt={prompt}
+                  onPromptChange={setPrompt}
+                  findTerm={findTerm}
+                  onFindTermChange={setFindTerm}
+                />
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <AdvancedSettings
+                    settings={advancedSettings}
+                    onSettingsChange={setAdvancedSettings}
+                    includeCaption={includeCaption}
+                    onIncludeCaptionChange={setIncludeCaption}
+                  />
+                </div>
+              </div>
+            </details>
+          </div>
+
           <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
             <div className="space-y-6">
               <ImageUpload
@@ -182,46 +269,6 @@ function App() {
                 preview={imagePreview}
                 fileType={fileType}
               />
-
-              <ModeSelector
-                mode={mode}
-                onModeChange={setMode}
-                prompt={prompt}
-                onPromptChange={setPrompt}
-                findTerm={findTerm}
-                onFindTermChange={setFindTerm}
-              />
-
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <button
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="flex w-full items-center justify-between px-5 py-4 text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-slate-100 p-2 text-slate-600">
-                      <Settings className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">高级设置</p>
-                      <p className="text-xs text-slate-500">尺寸、裁剪和输出选项</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-medium text-blue-600">{showAdvanced ? '收起' : '展开'}</span>
-                </button>
-
-                <AnimatePresence>
-                  {showAdvanced && (
-                    <div className="border-t border-slate-100 p-5">
-                      <AdvancedSettings
-                        settings={advancedSettings}
-                        onSettingsChange={setAdvancedSettings}
-                        includeCaption={includeCaption}
-                        onIncludeCaptionChange={setIncludeCaption}
-                      />
-                    </div>
-                  )}
-                </AnimatePresence>
-              </div>
 
               {fileType === 'pdf' ? (
                 <PDFProcessor
