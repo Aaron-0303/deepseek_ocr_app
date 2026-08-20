@@ -97,7 +97,7 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
   return (
     <div className="space-y-4">
       {/* Format Selector */}
-      <div className="glass p-6 rounded-2xl space-y-3">
+      <div className="glass panel-glow p-6 rounded-2xl space-y-3">
         <label className="block text-sm font-medium text-gray-300 mb-3">
           Output Format
         </label>
@@ -108,8 +108,8 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
               onClick={() => setOutputFormat(format.value)}
               className={`p-3 rounded-xl text-sm font-medium transition-all ${
                 outputFormat === format.value
-                  ? 'bg-gradient-to-r from-purple-600 to-cyan-600 text-white'
-                  : 'glass text-gray-400 hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20'
+                  : 'border border-white/10 bg-white/[0.03] text-slate-400 hover:border-cyan-200/20 hover:bg-white/[0.06]'
               }`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -125,14 +125,13 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
       <motion.button
         onClick={handleProcess}
         disabled={!pdfFile || processing}
-        className={`w-full relative overflow-hidden rounded-2xl p-[2px] ${
+        className={`primary-action w-full ${
           !pdfFile || processing ? 'opacity-50 cursor-not-allowed' : ''
         }`}
         whileHover={!processing && pdfFile ? { scale: 1.02 } : {}}
         whileTap={!processing && pdfFile ? { scale: 0.98 } : {}}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-600 animate-gradient" />
-        <div className="relative bg-dark-100 px-8 py-4 rounded-2xl flex items-center justify-center gap-3">
+        <div className="relative flex items-center justify-center gap-3">
           {processing ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -158,11 +157,11 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-400">Processing...</span>
-              <span className="text-sm font-medium text-purple-400">{progress}%</span>
+              <span className="text-sm font-medium text-cyan-300">{progress}%</span>
             </div>
             <div className="h-2 bg-dark-200 rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-purple-600 to-cyan-600"
+                className="h-full bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.3 }}
