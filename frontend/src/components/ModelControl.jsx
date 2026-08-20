@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Cpu, HardDrive, Loader2, RefreshCw, AlertTriangle, Zap } from 'lucide-react'
+import { AlertTriangle, Cpu, HardDrive, Loader2, RefreshCw, Zap } from 'lucide-react'
 import axios from 'axios'
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
 const statusText = {
-  loading_cpu: '正在从磁盘加载模型到内存',
-  cpu_ready: '模型位于内存（CPU）',
-  loading_gpu: '正在从内存加载到显存',
-  gpu_ready: '模型已加载到显存（GPU）',
-  offloading_cpu: '正在从显存卸载到内存',
+  loading_cpu: '正在从磁盘加载模型',
+  cpu_ready: '模型位于内存',
+  loading_gpu: '正在加载到显存',
+  gpu_ready: '模型已在显存中',
+  offloading_cpu: '正在卸载到内存',
   error: '模型状态异常',
 }
 
@@ -31,7 +30,7 @@ function ModelControl() {
 
   useEffect(() => {
     refreshStatus()
-    const timer = setInterval(refreshStatus, 1000)
+    const timer = setInterval(refreshStatus, 1500)
     return () => clearInterval(timer)
   }, [refreshStatus])
 
@@ -51,87 +50,59 @@ function ModelControl() {
   const transitioning = ['loading_cpu', 'loading_gpu', 'offloading_cpu'].includes(status?.status)
   const gpuReady = status?.status === 'gpu_ready'
   const cpuReady = status?.status === 'cpu_ready'
+  const unavailable = !status || !!error
 
   return (
-    <div className="glass panel-glow p-5 rounded-2xl border-cyan-200/15">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`p-3 rounded-2xl border ${gpuReady ? 'bg-emerald-400/10 border-emerald-300/20' : 'bg-cyan-400/10 border-cyan-300/20'}`}>
-            {gpuReady ? <Zap className="w-5 h-5 text-emerald-300" /> : <Cpu className="w-5 h-5 text-cyan-200" />}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-white">模型资源状态</span>
-              <span className={`text-xs px-2.5 py-1 rounded-full border ${gpuReady ? 'bg-emerald-400/10 border-emerald-300/20 text-emerald-200' : 'bg-cyan-400/10 border-cyan-300/20 text-cyan-100'}`}>
-                {status?.device?.toUpperCase() || '...' }
-              </span>
-            </div>
-            <p className="text-xs text-slate-300 mt-1">
-              {statusText[status?.status] || status?.message || '正在获取状态...'}
-            </p>
-            {status?.cuda_allocated_mb != null && (
-              <p className="text-xs text-slate-500 mt-1">
-                GPU 已分配 {status.cuda_allocated_mb} MB / 缓存 {status.cuda_reserved_mb} MB
-              </p>
-            )}
-          </div>
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-start gap-3">
+        <div className={`rounded-xl p-2.5 ${gpuReady ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+          {gpuReady ? <Zap className="h-5 w-5" /> : <Cpu className="h-5 w-5" />}
         </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <motion.button
-            onClick={() => runAction('load-gpu')}
-            disabled={!cpuReady || actionLoading || transitioning}
-            className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-              !cpuReady || actionLoading || transitioning
-                ? 'opacity-40 cursor-not-allowed glass text-gray-400'
-                : 'bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20'
-            }`}
-            whileHover={cpuReady && !actionLoading && !transitioning ? { scale: 1.02 } : {}}
-            whileTap={cpuReady && !actionLoading && !transitioning ? { scale: 0.98 } : {}}
-          >
-            {status?.status === 'loading_gpu' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            加载到 GPU
-          </motion.button>
-
-          <motion.button
-            onClick={() => runAction('offload-cpu')}
-            disabled={!gpuReady || actionLoading || transitioning}
-            className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-              !gpuReady || actionLoading || transitioning
-                ? 'opacity-40 cursor-not-allowed glass text-gray-400'
-                : 'border border-cyan-200/15 bg-white/5 text-cyan-50 hover:bg-cyan-300/10'
-            }`}
-            whileHover={gpuReady && !actionLoading && !transitioning ? { scale: 1.02 } : {}}
-            whileTap={gpuReady && !actionLoading && !transitioning ? { scale: 0.98 } : {}}
-          >
-            {status?.status === 'offloading_cpu' ? <Loader2 className="w-4 h-4 animate-spin" /> : <HardDrive className="w-4 h-4" />}
-            卸载到内存
-          </motion.button>
-
-          <button
-            onClick={refreshStatus}
-            className="border border-cyan-200/15 bg-white/5 p-2.5 rounded-xl text-cyan-100/70 hover:text-white hover:bg-cyan-300/10 transition-colors"
-            title="刷新状态"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-slate-900">{statusText[status?.status] || '正在连接后端'}</p>
+            <button onClick={refreshStatus} className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-blue-600" title="刷新状态">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            {status?.device ? `设备：${status.device.toUpperCase()}` : '等待状态返回'}
+          </p>
+          {status?.cuda_allocated_mb != null && (
+            <p className="mt-1 text-xs text-slate-400">显存 {status.cuda_allocated_mb} MB · 缓存 {status.cuda_reserved_mb} MB</p>
+          )}
         </div>
       </div>
 
       {transitioning && (
-        <div className="mt-4 h-1.5 bg-slate-900 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full w-1/3 bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500 rounded-full shadow-[0_0_14px_rgba(34,211,238,0.8)]"
-            animate={{ x: ['-100%', '300%'] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-          />
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-full w-1/2 animate-pulse rounded-full bg-gradient-to-r from-cyan-500 to-blue-600" />
         </div>
       )}
 
-      {error && (
-        <div className="mt-3 flex items-start gap-2 text-xs text-red-300">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span>{error}</span>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          onClick={() => runAction('load-gpu')}
+          disabled={!cpuReady || actionLoading || transitioning}
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+        >
+          {status?.status === 'loading_gpu' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+          加载显存
+        </button>
+        <button
+          onClick={() => runAction('offload-cpu')}
+          disabled={!gpuReady || actionLoading || transitioning}
+          className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:text-blue-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-300"
+        >
+          {status?.status === 'offloading_cpu' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5" />}
+          卸载内存
+        </button>
+      </div>
+
+      {(error || unavailable) && error && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+          <span className="break-all">{error}</span>
         </div>
       )}
     </div>

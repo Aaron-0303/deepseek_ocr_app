@@ -55,15 +55,18 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
   })
 
   return (
-    <div className="glass panel-glow p-5 sm:p-6 rounded-2xl space-y-4">
+    <div className="glass p-5 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-white">
-          {isPDF ? 'Upload PDF' : 'Upload Image'}
-        </h3>
+        <div>
+          <p className="section-label">文件上传</p>
+          <h3 className="font-semibold text-slate-950">
+            {isPDF ? '上传 PDF' : '上传图片'}
+          </h3>
+        </div>
         {isPDF ? (
-          <FileText className="w-5 h-5 text-cyan-300" />
+          <FileText className="w-5 h-5 text-blue-600" />
         ) : (
-          <ImageIcon className="w-5 h-5 text-cyan-300" />
+          <ImageIcon className="w-5 h-5 text-blue-600" />
         )}
       </div>
 
@@ -74,8 +77,8 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
             relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer
             transition-all duration-300
             ${isDragActive 
-              ? 'border-cyan-300 bg-cyan-300/10 shadow-[0_0_35px_rgba(34,211,238,0.12)]'
-              : 'border-cyan-100/15 bg-slate-950/35 hover:border-cyan-300/40 hover:bg-cyan-300/[0.06]'
+              ? 'border-blue-500 bg-blue-50 shadow-[0_0_30px_rgba(59,130,246,0.12)]'
+              : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50'
             }
           `}
           whileHover={{ scale: 1.02 }}
@@ -92,32 +95,32 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
               className="flex justify-center"
             >
               <div className="relative">
-                <div className="absolute inset-0 bg-cyan-300 rounded-2xl blur-xl opacity-40" />
-                <div className="relative bg-gradient-to-br from-cyan-300 via-sky-400 to-blue-600 p-4 rounded-2xl text-slate-950 shadow-xl shadow-cyan-500/20">
+                <div className="absolute inset-0 bg-blue-300 rounded-2xl blur-xl opacity-30" />
+                <div className="relative bg-gradient-to-br from-cyan-400 to-blue-600 p-4 rounded-2xl text-white shadow-xl shadow-blue-200">
                   <Upload className="w-8 h-8" />
                 </div>
               </div>
             </motion.div>
             
             <div>
-              <p className="text-lg font-semibold text-white">
+              <p className="text-lg font-semibold text-slate-900">
                 {isDragActive
-                  ? 'Drop it like it\'s hot! 🔥'
+                  ? '松开即可上传'
                   : isPDF
-                    ? 'Drag & drop your PDF'
-                    : 'Drag & drop your image'
+                    ? '拖放 PDF 到这里'
+                    : '拖放图片到这里'
                 }
               </p>
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 {isPDF
-                  ? 'or click to browse • PDF files up to 100MB'
-                  : 'or click to browse • PNG, JPG, WEBP up to 10MB'
+                  ? '或点击选择文件 · 最大 100MB'
+                  : '或点击选择文件 · 支持 PNG、JPG、WEBP'
                 }
               </p>
               {!isPDF && (
-                <p className="text-xs text-cyan-300 mt-2 flex items-center justify-center gap-1.5">
+                <p className="text-xs text-blue-600 mt-2 flex items-center justify-center gap-1.5">
                   <Clipboard className="w-3.5 h-3.5" />
-                  <span>Press Ctrl+V to paste from clipboard</span>
+                  <span>也可以按 Ctrl+V 粘贴剪贴板图片</span>
                 </p>
               )}
             </div>
@@ -130,18 +133,18 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
           className="relative group rounded-2xl overflow-hidden"
         >
           {isPDF ? (
-            <div className="flex items-center justify-center p-12 bg-cyan-300/[0.04] border border-cyan-100/15 rounded-2xl">
+            <div className="flex items-center justify-center p-12 bg-blue-50 border border-blue-100 rounded-2xl">
               <div className="text-center">
-                <FileText className="w-16 h-16 mx-auto mb-3 text-cyan-300" />
-                <p className="text-sm text-gray-300 font-medium">PDF Ready</p>
-                <p className="text-xs text-gray-500 mt-1">{preview?.name || 'Document loaded'}</p>
+                <FileText className="w-16 h-16 mx-auto mb-3 text-blue-500" />
+                <p className="text-sm text-slate-800 font-medium">PDF 已就绪</p>
+                <p className="text-xs text-slate-500 mt-1">{preview?.name || '文档已加载'}</p>
               </div>
             </div>
           ) : (
             <img
               src={preview}
               alt="Preview"
-              className="w-full rounded-2xl border border-white/10"
+              className="w-full rounded-2xl border border-slate-200"
             />
           )}
           <div className="absolute top-3 right-3 flex gap-2">

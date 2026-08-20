@@ -145,15 +145,15 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
   }, [imageLoaded, result, drawBoxes])
 
   return (
-    <div className="glass panel-glow p-5 sm:p-6 rounded-2xl space-y-4 h-full min-h-[620px]">
+    <div className="glass p-5 sm:p-6 space-y-4 min-h-[620px]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="rounded-xl bg-cyan-300/10 p-2 border border-cyan-200/15">
-            <Sparkles className="w-5 h-5 text-cyan-200" />
+          <div className="rounded-xl bg-blue-50 p-2 border border-blue-100">
+            <Sparkles className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <p className="panel-label !mb-0">AI output</p>
-            <h3 className="font-semibold text-white">Recognition results</h3>
+            <p className="section-label !mb-0">识别输出</p>
+            <h3 className="font-semibold text-slate-950">处理结果</h3>
           </div>
         </div>
         
@@ -194,12 +194,12 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 border-4 border-cyan-300/15 border-t-cyan-300 rounded-full shadow-[0_0_30px_rgba(34,211,238,0.15)]"
+                className="w-16 h-16 border-4 border-blue-100 border-t-blue-600 rounded-full"
               />
-              <Loader2 className="w-8 h-8 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-cyan-200" />
+              <Loader2 className="w-8 h-8 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600" />
             </div>
-            <p className="text-sm text-gray-400 animate-pulse">
-              Processing your image with AI magic...
+            <p className="text-sm text-slate-500 animate-pulse">
+              正在识别图片内容…
             </p>
           </motion.div>
         ) : result ? (
@@ -212,7 +212,7 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
           >
             {/* Preview with boxes */}
             {imagePreview && result.boxes && result.boxes.length > 0 && (
-              <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black">
+              <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900">
                 <img 
                   ref={imgRef}
                   src={imagePreview} 
@@ -232,21 +232,21 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
             )}
 
             {/* Text result */}
-            <div className="bg-slate-950/60 border border-cyan-100/10 rounded-xl p-5 max-h-[32rem] overflow-y-auto shadow-inner">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 max-h-[32rem] overflow-y-auto">
               {isHTML ? (
                 <div 
-                  className="prose prose-invert prose-sm max-w-none"
+                  className="prose prose-slate prose-sm max-w-none"
                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.text) }}
                   style={{
-                    color: '#e5e7eb',
+                    color: '#334155',
                   }}
                 />
               ) : isMarkdown ? (
-                <div className="prose prose-invert prose-sm max-w-none">
+                <div className="prose prose-slate prose-sm max-w-none">
                   <ReactMarkdown>{result.text}</ReactMarkdown>
                 </div>
               ) : (
-                <pre className="text-sm text-gray-200 whitespace-pre-wrap font-mono">
+                <pre className="text-sm text-slate-700 whitespace-pre-wrap font-mono">
                   {result.text}
                 </pre>
               )}
@@ -322,7 +322,7 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="flex items-center justify-center gap-2 text-green-400"
+              className="flex items-center justify-center gap-2 text-emerald-600"
             >
               <CheckCircle2 className="w-5 h-5" />
               <span className="text-sm font-medium">Processing complete!</span>
@@ -343,16 +343,16 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
                   opacity: [0.5, 0.8, 0.5]
                 }}
                 transition={{ duration: 3, repeat: Infinity }}
-                className="w-20 h-20 bg-cyan-300/25 rounded-full blur-xl"
+                className="w-20 h-20 bg-blue-200/70 rounded-full blur-xl"
               />
-              <Sparkles className="w-10 h-10 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-cyan-200" />
+              <Sparkles className="w-10 h-10 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600" />
             </div>
             <div className="text-center">
-              <p className="text-lg font-semibold text-white">
-                Ready to process
+              <p className="text-lg font-semibold text-slate-900">
+                等待识别
               </p>
-              <p className="text-sm text-slate-400 mt-1">
-                Upload an image and hit analyze to see the magic!
+              <p className="text-sm text-slate-500 mt-1">
+                上传图片并开始识别，结果会显示在这里
               </p>
             </div>
           </motion.div>

@@ -20,10 +20,10 @@ export default function ModeSelector({
   const needsInput = selectedMode?.needsInput
 
   return (
-    <div className="glass panel-glow p-5 rounded-2xl space-y-4">
+    <div className="glass p-5 space-y-4">
       <div>
-        <p className="panel-label">Recognition mode</p>
-        <h3 className="text-base font-semibold text-white">Choose how AI reads your file</h3>
+        <p className="section-label">识别模式</p>
+        <h3 className="text-base font-semibold text-slate-950">选择模型处理文件的方式</h3>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -38,8 +38,8 @@ export default function ModeSelector({
               className={`
                 relative p-2 rounded-xl text-center transition-all
                 ${isSelected 
-                  ? 'border border-cyan-200/30 bg-cyan-300/10 shadow-lg shadow-cyan-950/30'
-                  : 'bg-white/[0.035] border border-white/10 hover:border-cyan-200/20 hover:bg-white/[0.06]'
+                  ? 'border border-blue-500 bg-blue-50 shadow-sm'
+                  : 'bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40'
                 }
               `}
               whileHover={{ scale: 1.05 }}
@@ -48,7 +48,7 @@ export default function ModeSelector({
               {isSelected && (
                 <motion.div
                   layoutId="selected-mode"
-                  className={`absolute inset-0 bg-gradient-to-br ${m.color} opacity-10 rounded-xl`}
+                  className="absolute inset-0 rounded-xl bg-blue-50"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -58,12 +58,12 @@ export default function ModeSelector({
                   w-8 h-8 mx-auto rounded-lg flex items-center justify-center
                   ${isSelected 
                     ? `bg-gradient-to-br ${m.color} shadow-lg`
-                    : 'bg-slate-800'
+                    : 'bg-slate-100 text-slate-500'
                   }
                 `}>
                   <Icon className="w-4 h-4" />
                 </div>
-                <p className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                <p className={`text-xs font-medium ${isSelected ? 'text-blue-700' : 'text-slate-600'}`}>
                   {m.name}
                 </p>
               </div>
@@ -82,8 +82,8 @@ export default function ModeSelector({
             type="text"
             value={findTerm}
             onChange={(e) => onFindTermChange(e.target.value)}
-            placeholder="Enter term to find (e.g., Total, Invoice #)"
-            className="w-full bg-slate-950/60 border border-cyan-100/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/10 transition-colors"
+            placeholder="输入要定位的内容，例如：总计、发票号"
+            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-colors"
           />
         </motion.div>
       )}
@@ -97,8 +97,8 @@ export default function ModeSelector({
           <textarea
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
-            placeholder="Enter your custom prompt..."
-            className="w-full bg-slate-950/60 border border-cyan-100/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/10 transition-colors resize-none"
+            placeholder="输入自定义提示词…"
+            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-colors resize-none"
             rows={2}
           />
         </motion.div>
