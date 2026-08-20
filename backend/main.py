@@ -38,8 +38,18 @@ model_lock = asyncio.Lock()
 
 def _cuda_memory_mb():
     if not torch.cuda.is_available():
-        return 0, 0
+        return 0, 0, 0, 0
+
+    try:
+        free_bytes, total_bytes = torch.cuda.mem_get_info()
+        used_bytes = total_bytes - free_bytes
+    except Exception:
+        total_bytes = torch.cuda.get_device_properties(torch.cuda.current_device()).total_memory
+        used_bytes = torch.cuda.memory_reserved()
+
     return (
+        round(used_bytes / 1024 / 1024, 1),
+        round(total_bytes / 1024 / 1024, 1),
         round(torch.cuda.memory_allocated() / 1024 / 1024, 1),
         round(torch.cuda.memory_reserved() / 1024 / 1024, 1),
     )
@@ -280,12 +290,14 @@ async def health():
 
 @app.get("/api/model/status")
 async def get_model_status():
-    allocated, reserved = _cuda_memory_mb()
+    used, total, allocated, reserved = _cuda_memory_mb()
     return {
         "status": model_status,
         "message": model_message,
         "device": _model_device(),
         "cuda_available": torch.cuda.is_available(),
+        "cuda_used_mb": used,
+        "cuda_total_mb": total,
         "cuda_allocated_mb": allocated,
         "cuda_reserved_mb": reserved,
     }
