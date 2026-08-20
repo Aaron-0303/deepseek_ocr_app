@@ -8,6 +8,11 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api'
 function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption }) {
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [progressInfo, setProgressInfo] = useState({
+    message: '',
+    currentPage: 0,
+    totalPages: 0,
+  })
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [outputFormat, setOutputFormat] = useState('markdown')
@@ -24,11 +29,17 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
 
     setProcessing(true)
     setError(null)
+    setResult(null)
     setProgress(0)
+    setProgressInfo({ message: '正在上传 PDF', currentPage: 0, totalPages: 0 })
+
+    const jobId = `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    let progressTimer = null
 
     try {
       const formData = new FormData()
       formData.append('pdf_file', pdfFile)
+      formData.append('job_id', jobId)
       formData.append('mode', mode)
       formData.append('prompt', prompt)
       formData.append('output_format', outputFormat)
@@ -40,14 +51,36 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
       formData.append('image_size', advancedSettings.image_size)
       formData.append('crop_mode', advancedSettings.crop_mode)
 
+      const pollProgress = async () => {
+        try {
+          const { data } = await axios.get(
+            `${API_BASE}/process-pdf/progress/${encodeURIComponent(jobId)}`
+          )
+
+          if (data.status !== 'waiting') {
+            setProgress(Math.min(100, Math.max(0, data.progress || 0)))
+            setProgressInfo({
+              message: data.message || '正在处理 PDF',
+              currentPage: data.current_page || 0,
+              totalPages: data.total_pages || 0,
+            })
+          }
+        } catch (pollError) {
+          console.debug('PDF progress polling failed:', pollError)
+        }
+      }
+
+      progressTimer = window.setInterval(pollProgress, 700)
+
       const response = await axios.post(`${API_BASE}/process-pdf`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
         responseType: outputFormat === 'json' ? 'json' : 'blob',
         onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-          setProgress(percentCompleted)
+          if (!progressEvent.total) return
+          const uploadPercent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          setProgress(Math.max(1, Math.round(uploadPercent * 0.05)))
         }
       })
 
@@ -74,10 +107,12 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
       }
 
       setProgress(100)
+      setProgressInfo((current) => ({ ...current, message: 'PDF 处理完成' }))
     } catch (err) {
       console.error('PDF processing error:', err)
       setError(err.response?.data?.detail || err.message || 'Failed to process PDF')
     } finally {
+      if (progressTimer) window.clearInterval(progressTimer)
       setProcessing(false)
     }
   }, [pdfFile, mode, prompt, outputFormat, includeCaption, advancedSettings])
@@ -148,7 +183,7 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
 
       {/* Progress Bar */}
       <AnimatePresence>
-        {processing && progress > 0 && (
+        {processing && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -156,7 +191,9 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
             className="glass p-4 rounded-2xl"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-slate-500">正在处理…</span>
+              <span className="text-sm text-slate-500">
+                {progressInfo.message || '正在处理 PDF'}
+              </span>
               <span className="text-sm font-medium text-blue-600">{progress}%</span>
             </div>
             <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
@@ -167,6 +204,11 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
                 transition={{ duration: 0.3 }}
               />
             </div>
+            {progressInfo.totalPages > 0 && (
+              <p className="mt-2 text-xs text-slate-400">
+                当前第 {progressInfo.currentPage}/{progressInfo.totalPages} 页
+              </p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
