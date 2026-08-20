@@ -3,6 +3,7 @@ import re
 import tempfile
 import shutil
 import base64
+import asyncio
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 
@@ -26,53 +27,91 @@ from pdf_utils import (
 from format_converter import DocumentConverter
 
 # -----------------------------
-# Lifespan context for model loading
+# Model lifecycle / device management
 # -----------------------------
 model = None
 tokenizer = None
+model_status = "loading_cpu"
+model_message = "Starting model load into CPU memory"
+model_lock = asyncio.Lock()
+
+
+def _cuda_memory_mb():
+    if not torch.cuda.is_available():
+        return 0, 0
+    return (
+        round(torch.cuda.memory_allocated() / 1024 / 1024, 1),
+        round(torch.cuda.memory_reserved() / 1024 / 1024, 1),
+    )
+
+
+def _model_device() -> str:
+    if model is None:
+        return "none"
+    try:
+        return str(next(model.parameters()).device)
+    except Exception:
+        return "unknown"
+
+
+def _move_model(target: str):
+    global model
+    if model is None:
+        raise RuntimeError("Model has not been loaded")
+    model.to(target)
+    model.eval()
+    if target == "cpu" and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load model on startup, cleanup on shutdown"""
-    global model, tokenizer
-    
-    # Environment setup
+    """Load model into CPU RAM on startup; GPU use is controlled manually."""
+    global model, tokenizer, model_status, model_message
+
     os.environ.pop("TRANSFORMERS_CACHE", None)
     MODEL_NAME = env_config("MODEL_NAME", default="deepseek-ai/DeepSeek-OCR")
     HF_HOME = env_config("HF_HOME", default="/models")
     os.makedirs(HF_HOME, exist_ok=True)
-    
-    # Load model
-    print(f"🚀 Loading {MODEL_NAME}...")
-    torch_dtype = torch.bfloat16
-    
-    tokenizer = AutoTokenizer.from_pretrained(
-        MODEL_NAME,
-        trust_remote_code=True,
-    )
-    
-    model = AutoModel.from_pretrained(
-        MODEL_NAME,
-        trust_remote_code=True,
-        use_safetensors=True,
-        attn_implementation="eager",
-        torch_dtype=torch_dtype,
-    ).eval().to("cuda")
-    
-    # Pad token setup
+
     try:
-        if getattr(tokenizer, "pad_token_id", None) is None and getattr(tokenizer, "eos_token_id", None) is not None:
-            tokenizer.pad_token = tokenizer.eos_token
-        if getattr(model.config, "pad_token_id", None) is None and getattr(tokenizer, "pad_token_id", None) is not None:
-            model.config.pad_token_id = tokenizer.pad_token_id
-    except Exception:
-        pass
-    
-    print("✅ Model loaded and ready!")
-    
+        model_status = "loading_cpu"
+        model_message = f"Loading {MODEL_NAME} into CPU memory"
+        print(f"🚀 Loading {MODEL_NAME} into CPU memory...")
+        torch_dtype = torch.bfloat16
+
+        tokenizer = AutoTokenizer.from_pretrained(
+            MODEL_NAME,
+            trust_remote_code=True,
+        )
+
+        model = AutoModel.from_pretrained(
+            MODEL_NAME,
+            trust_remote_code=True,
+            use_safetensors=True,
+            attn_implementation="eager",
+            torch_dtype=torch_dtype,
+        ).eval().to("cpu")
+
+        try:
+            if getattr(tokenizer, "pad_token_id", None) is None and getattr(tokenizer, "eos_token_id", None) is not None:
+                tokenizer.pad_token = tokenizer.eos_token
+            if getattr(model.config, "pad_token_id", None) is None and getattr(tokenizer, "pad_token_id", None) is not None:
+                model.config.pad_token_id = tokenizer.pad_token_id
+        except Exception:
+            pass
+
+        model_status = "cpu_ready"
+        model_message = "Model is ready in CPU memory. Load it to GPU before OCR."
+        print("✅ Model loaded into CPU memory. GPU memory remains free until requested.")
+    except Exception as e:
+        model_status = "error"
+        model_message = f"Model load failed: {type(e).__name__}"
+        print(f"❌ Model load failed: {type(e).__name__}: {e}")
+        raise
+
     yield
-    
-    # Cleanup
+
     print("🛑 Shutting down...")
 
 # -----------------------------
@@ -81,7 +120,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="DeepSeek-OCR API",
     description="Blazing fast OCR with DeepSeek-OCR model 🔥",
-    version="2.0.0",
+    version="2.1.0",
     lifespan=lifespan
 )
 
@@ -91,7 +130,7 @@ CORS_ORIGINS = [o.strip() for o in CORS_ORIGINS if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS if CORS_ORIGINS else ["http://localhost:3000"],
+    allow_origins=CORS_ORIGINS if CORS_ORIGINS else ["http://localhost:30330"],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
@@ -168,12 +207,6 @@ def build_prompt(
 # -----------------------------
 # Grounding parser
 # -----------------------------
-# Match a full detection block and capture the coordinates as the entire list expression
-# Examples of captured coords (including outer brackets):
-#  - [[312, 339, 480, 681]]
-#  - [[504, 700, 625, 910], [771, 570, 996, 996]]
-#  - [[110, 310, 255, 800], [312, 343, 479, 680], ...]
-# Using a greedy bracket capture ensures we include all inner lists up to the last ']' before </|det|>
 DET_BLOCK = re.compile(
     r"<\|ref\|>(?P<label>.*?)<\|/ref\|>\s*<\|det\|>\s*(?P<coords>\[.*\])\s*<\|/det\|>",
     re.DOTALL,
@@ -181,24 +214,17 @@ DET_BLOCK = re.compile(
 
 def clean_grounding_text(text: str) -> str:
     """Remove grounding tags from text for display, keeping labels"""
-    # Replace <|ref|>label<|/ref|><|det|>[...any nested lists...]<|/det|> with just the label
     cleaned = re.sub(
         r"<\|ref\|>(.*?)<\|/ref\|>\s*<\|det\|>\s*\[.*\]\s*<\|/det\|>",
         r"\1",
         text,
         flags=re.DOTALL,
     )
-    # Also remove any standalone grounding tags
     cleaned = re.sub(r"<\|grounding\|>", "", cleaned)
     return cleaned.strip()
 
 def parse_detections(text: str, image_width: int, image_height: int) -> List[Dict[str, Any]]:
-    """Parse grounding boxes from text and scale from 0-999 normalized coords to actual image dimensions
-    
-    Handles both single and multiple bounding boxes:
-    - Single: <|ref|>label<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>
-    - Multiple: <|ref|>label<|/ref|><|det|>[[x1,y1,x2,y2], [x1,y1,x2,y2], ...]<|/det|>
-    """
+    """Parse grounding boxes from text and scale from 0-999 normalized coords to actual image dimensions."""
     boxes: List[Dict[str, Any]] = []
     for m in DET_BLOCK.finditer(text or ""):
         label = m.group("label").strip()
@@ -209,17 +235,13 @@ def parse_detections(text: str, image_width: int, image_height: int) -> List[Dic
 
         try:
             import ast
-
-            # Parse the full bracket expression directly (handles single and multiple)
             parsed = ast.literal_eval(coords_str)
 
-            # Normalize to a list of lists
             if (
                 isinstance(parsed, list)
                 and len(parsed) == 4
                 and all(isinstance(n, (int, float)) for n in parsed)
             ):
-                # Single box provided as [x1,y1,x2,y2]
                 box_coords = [parsed]
                 print("📦 Single box (flat list) detected")
             elif isinstance(parsed, list):
@@ -228,7 +250,6 @@ def parse_detections(text: str, image_width: int, image_height: int) -> List[Dic
             else:
                 raise ValueError("Unsupported coords structure")
 
-            # Process each box
             for idx, box in enumerate(box_coords):
                 if isinstance(box, (list, tuple)) and len(box) >= 4:
                     x1 = int(float(box[0]) / 999 * image_width)
@@ -242,7 +263,7 @@ def parse_detections(text: str, image_width: int, image_height: int) -> List[Dic
         except Exception as e:
             print(f"❌ Parsing failed: {e}")
             continue
-    
+
     print(f"🎯 Total boxes parsed: {len(boxes)}")
     return boxes
 
@@ -255,7 +276,78 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "model_loaded": model is not None}
+    return {"status": "healthy", "model_loaded": model is not None, "model_status": model_status}
+
+@app.get("/api/model/status")
+async def get_model_status():
+    allocated, reserved = _cuda_memory_mb()
+    return {
+        "status": model_status,
+        "message": model_message,
+        "device": _model_device(),
+        "cuda_available": torch.cuda.is_available(),
+        "cuda_allocated_mb": allocated,
+        "cuda_reserved_mb": reserved,
+    }
+
+@app.post("/api/model/load-gpu")
+async def load_model_to_gpu():
+    global model_status, model_message
+    if model is None or tokenizer is None:
+        raise HTTPException(status_code=503, detail="模型尚未加载到内存")
+    if not torch.cuda.is_available():
+        raise HTTPException(status_code=503, detail="CUDA 不可用，无法加载到 GPU")
+
+    async with model_lock:
+        if _model_device().startswith("cuda"):
+            model_status = "gpu_ready"
+            model_message = "Model is already on GPU"
+            return await get_model_status()
+
+        model_status = "loading_gpu"
+        model_message = "Moving model from CPU memory to GPU"
+        try:
+            await asyncio.to_thread(_move_model, "cuda")
+            model_status = "gpu_ready"
+            model_message = "Model is ready on GPU"
+        except Exception as e:
+            model_status = "error"
+            model_message = f"GPU load failed: {type(e).__name__}"
+            raise HTTPException(status_code=500, detail="模型加载到 GPU 失败")
+
+    return await get_model_status()
+
+@app.post("/api/model/offload-cpu")
+async def offload_model_to_cpu():
+    global model_status, model_message
+    if model is None or tokenizer is None:
+        raise HTTPException(status_code=503, detail="模型尚未加载")
+
+    async with model_lock:
+        if _model_device().startswith("cpu"):
+            model_status = "cpu_ready"
+            model_message = "Model is already in CPU memory"
+            return await get_model_status()
+
+        model_status = "offloading_cpu"
+        model_message = "Moving model from GPU to CPU memory"
+        try:
+            await asyncio.to_thread(_move_model, "cpu")
+            model_status = "cpu_ready"
+            model_message = "Model is stored in CPU memory; GPU memory has been released"
+        except Exception as e:
+            model_status = "error"
+            model_message = f"CPU offload failed: {type(e).__name__}"
+            raise HTTPException(status_code=500, detail="模型卸载到内存失败")
+
+    return await get_model_status()
+
+
+def require_gpu_ready():
+    if model is None or tokenizer is None:
+        raise HTTPException(status_code=503, detail="模型尚未加载")
+    if model_status != "gpu_ready" or not _model_device().startswith("cuda"):
+        raise HTTPException(status_code=503, detail="模型当前位于 CPU 内存，请先点击“加载到 GPU”")
 
 @app.post("/api/ocr")
 async def ocr_inference(
@@ -271,25 +363,9 @@ async def ocr_inference(
     crop_mode: bool = Form(True),
     test_compress: bool = Form(False),
 ):
-    """
-    Perform OCR inference on uploaded image
-    
-    - **image**: Image file to process
-    - **mode**: OCR mode (plain_ocr, markdown, tables_csv, etc.)
-    - **prompt**: Custom prompt for freeform mode
-    - **grounding**: Enable grounding boxes
-    - **include_caption**: Add image description
-    - **find_term**: Term to find (for find_ref mode)
-    - **schema**: JSON schema (for kv_json mode)
-    - **base_size**: Base processing size
-    - **image_size**: Image size parameter
-    - **crop_mode**: Enable crop mode
-    - **test_compress**: Test compression
-    """
-    if model is None or tokenizer is None:
-        raise HTTPException(status_code=503, detail="Model not loaded yet")
-    
-    # Build prompt
+    """Perform OCR inference on uploaded image."""
+    require_gpu_ready()
+
     prompt_text = build_prompt(
         mode=mode,
         user_prompt=prompt,
@@ -298,26 +374,23 @@ async def ocr_inference(
         schema=schema,
         include_caption=include_caption,
     )
-    
+
     tmp_img = None
     out_dir = None
     try:
-        # Save uploaded file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
             content = await image.read()
             tmp.write(content)
             tmp_img = tmp.name
-        
-        # Get original dimensions
+
         try:
             with Image.open(tmp_img) as im:
                 orig_w, orig_h = im.size
         except Exception:
             orig_w = orig_h = None
-        
+
         out_dir = tempfile.mkdtemp(prefix="dsocr_")
-        
-        # Run inference
+
         res = model.infer(
             tokenizer,
             prompt=prompt_text,
@@ -330,8 +403,7 @@ async def ocr_inference(
             test_compress=test_compress,
             eval_mode=True,
         )
-        
-        # Normalize response
+
         if isinstance(res, str):
             text = res.strip()
         elif isinstance(res, dict) and "text" in res:
@@ -340,8 +412,7 @@ async def ocr_inference(
             text = "\n".join(map(str, res)).strip()
         else:
             text = ""
-        
-        # Fallback: check output file
+
         if not text:
             mmd = os.path.join(out_dir, "result.mmd")
             if os.path.exists(mmd):
@@ -349,21 +420,17 @@ async def ocr_inference(
                     text = fh.read().strip()
         if not text:
             text = "No text returned by model."
-        
-        # Parse grounding boxes with proper coordinate scaling
+
         boxes = parse_detections(text, orig_w or 1, orig_h or 1) if ("<|det|>" in text or "<|ref|>" in text) else []
-        
-        # Clean grounding tags from display text, but keep the labels
         display_text = clean_grounding_text(text) if ("<|ref|>" in text or "<|grounding|>" in text) else text
-        
-        # If display text is empty after cleaning but we have boxes, show the labels
+
         if not display_text and boxes:
             display_text = ", ".join([b["label"] for b in boxes])
-        
+
         return JSONResponse({
             "success": True,
             "text": display_text,
-            "raw_text": text,  # Include raw model output for debugging
+            "raw_text": text,
             "boxes": boxes,
             "image_dims": {"w": orig_w, "h": orig_h},
             "metadata": {
@@ -374,11 +441,13 @@ async def ocr_inference(
                 "crop_mode": crop_mode
             }
         })
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"OCR inference error: {type(e).__name__}: {str(e)}")
         raise HTTPException(status_code=500, detail="An internal error occurred during OCR processing.")
-    
+
     finally:
         if tmp_img:
             try:
@@ -393,7 +462,7 @@ async def process_pdf(
     pdf_file: UploadFile = File(...),
     mode: str = Form("plain_ocr"),
     prompt: str = Form(""),
-    output_format: str = Form("markdown"),  # markdown, html, docx, json
+    output_format: str = Form("markdown"),
     grounding: bool = Form(False),
     include_caption: bool = Form(False),
     extract_images: bool = Form(True),
@@ -402,46 +471,26 @@ async def process_pdf(
     image_size: int = Form(640),
     crop_mode: bool = Form(True),
 ):
-    """
-    Process PDF document with OCR and convert to various formats
+    """Process PDF document with OCR and convert to various formats."""
+    require_gpu_ready()
 
-    - **pdf_file**: PDF file to process
-    - **mode**: OCR mode (plain_ocr, markdown, tables_csv, etc.)
-    - **prompt**: Custom prompt for freeform mode
-    - **output_format**: Output format (markdown, html, docx, json)
-    - **grounding**: Enable grounding boxes
-    - **include_caption**: Add image descriptions
-    - **extract_images**: Extract images from PDF
-    - **dpi**: PDF rendering resolution (default: 144)
-    - **base_size**: Base processing size
-    - **image_size**: Image size parameter
-    - **crop_mode**: Enable crop mode
-    """
-    if model is None or tokenizer is None:
-        raise HTTPException(status_code=503, detail="Model not loaded yet")
-
-    # Validate output format
     if output_format not in ["markdown", "html", "docx", "json"]:
         raise HTTPException(status_code=400, detail="Invalid output format. Must be: markdown, html, docx, or json")
 
     try:
-        # Read PDF file
         pdf_bytes = await pdf_file.read()
 
-        # Convert PDF to images
         print(f"📄 Converting PDF to images (DPI: {dpi})...")
         images = pdf_to_images_high_quality(pdf_bytes, dpi=dpi)
         total_pages = len(images)
         print(f"✅ Converted {total_pages} pages")
 
-        # Process each page
         pages_content = []
         converter = DocumentConverter()
 
         for page_idx, img in enumerate(images):
             print(f"🔍 Processing page {page_idx + 1}/{total_pages}...")
 
-            # Build prompt for this page
             prompt_text = build_prompt(
                 mode=mode,
                 user_prompt=prompt,
@@ -451,7 +500,6 @@ async def process_pdf(
                 include_caption=include_caption,
             )
 
-            # Save image temporarily
             tmp_img = None
             out_dir = None
             try:
@@ -462,7 +510,6 @@ async def process_pdf(
                 orig_w, orig_h = img.size
                 out_dir = tempfile.mkdtemp(prefix="dsocr_pdf_")
 
-                # Run inference
                 res = model.infer(
                     tokenizer,
                     prompt=prompt_text,
@@ -476,7 +523,6 @@ async def process_pdf(
                     eval_mode=True,
                 )
 
-                # Normalize response
                 if isinstance(res, str):
                     text = res.strip()
                 elif isinstance(res, dict) and "text" in res:
@@ -494,14 +540,12 @@ async def process_pdf(
                 if not text:
                     text = f"No text returned for page {page_idx + 1}."
 
-                # Extract images if requested
                 page_images = []
                 if extract_images:
                     matches, matches_image, matches_other = extract_ref_patterns(text)
                     if matches_image:
                         cropped = crop_images_from_refs(img, matches)
                         for cropped_img in cropped:
-                            # Convert to base64
                             img_buffer = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
                             cropped_img.save(img_buffer.name, format="JPEG", quality=95)
                             with open(img_buffer.name, "rb") as f:
@@ -509,15 +553,11 @@ async def process_pdf(
                                 page_images.append(img_b64)
                             os.remove(img_buffer.name)
 
-                        # Clean the text and add image placeholders
                         text = clean_markdown_content(text, matches_image, matches_other)
                         for img_idx in range(len(page_images)):
                             text = f"[IMAGE_{img_idx}]\n" + text
 
-                # Parse grounding boxes
                 boxes = parse_detections(text, orig_w, orig_h) if ("<|det|>" in text or "<|ref|>" in text) else []
-
-                # Clean grounding tags from display text
                 display_text = clean_grounding_text(text) if ("<|ref|>" in text or "<|grounding|>" in text) else text
 
                 pages_content.append({
@@ -540,7 +580,6 @@ async def process_pdf(
 
         print(f"✅ Processed all {total_pages} pages")
 
-        # Convert to requested format
         if output_format == "json":
             return JSONResponse({
                 "success": True,
@@ -558,23 +597,25 @@ async def process_pdf(
             return StreamingResponse(
                 iter([md_content.encode('utf-8')]),
                 media_type="text/markdown",
-                headers={"Content-Disposition": f"attachment; filename=ocr_result.md"}
+                headers={"Content-Disposition": "attachment; filename=ocr_result.md"}
             )
         elif output_format == "html":
             html_content = converter.to_html(pages_content, include_images=extract_images)
             return StreamingResponse(
                 iter([html_content.encode('utf-8')]),
                 media_type="text/html",
-                headers={"Content-Disposition": f"attachment; filename=ocr_result.html"}
+                headers={"Content-Disposition": "attachment; filename=ocr_result.html"}
             )
         elif output_format == "docx":
             docx_buffer = converter.to_docx(pages_content, include_images=extract_images)
             return StreamingResponse(
                 docx_buffer,
                 media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                headers={"Content-Disposition": f"attachment; filename=ocr_result.docx"}
+                headers={"Content-Disposition": "attachment; filename=ocr_result.docx"}
             )
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         print(f"Error processing PDF: {e}")
@@ -583,5 +624,5 @@ async def process_pdf(
 
 if __name__ == "__main__":
     host = env_config("API_HOST", default="0.0.0.0")
-    port = env_config("API_PORT", default=8000, cast=int)
+    port = env_config("API_PORT", default=30380, cast=int)
     uvicorn.run(app, host=host, port=port)

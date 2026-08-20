@@ -6,6 +6,7 @@ import ModeSelector from './components/ModeSelector'
 import ResultPanel from './components/ResultPanel'
 import AdvancedSettings from './components/AdvancedSettings'
 import PDFProcessor from './components/PDFProcessor'
+import ModelControl from './components/ModelControl'
 import axios from 'axios'
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
@@ -188,6 +189,10 @@ function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-6">
+          <ModelControl />
+        </div>
+
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Left Panel - Upload & Controls */}
           <motion.div
