@@ -97,9 +97,9 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
   return (
     <div className="space-y-4">
       {/* Format Selector */}
-      <div className="glass panel-glow p-6 rounded-2xl space-y-3">
-        <label className="block text-sm font-medium text-gray-300 mb-3">
-          Output Format
+      <div className="glass p-6 space-y-3">
+        <label className="block text-sm font-semibold text-slate-900 mb-3">
+          输出格式
         </label>
         <div className="grid grid-cols-2 gap-2">
           {formats.map((format) => (
@@ -108,8 +108,8 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
               onClick={() => setOutputFormat(format.value)}
               className={`p-3 rounded-xl text-sm font-medium transition-all ${
                 outputFormat === format.value
-                  ? 'bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20'
-                  : 'border border-white/10 bg-white/[0.03] text-slate-400 hover:border-cyan-200/20 hover:bg-white/[0.06]'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50'
               }`}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -156,10 +156,10 @@ function PDFProcessor({ pdfFile, mode, prompt, advancedSettings, includeCaption 
             className="glass p-4 rounded-2xl"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">Processing...</span>
-              <span className="text-sm font-medium text-cyan-300">{progress}%</span>
+              <span className="text-sm text-slate-500">正在处理…</span>
+              <span className="text-sm font-medium text-blue-600">{progress}%</span>
             </div>
-            <div className="h-2 bg-dark-200 rounded-full overflow-hidden">
+            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-cyan-300 via-sky-400 to-blue-500"
                 initial={{ width: 0 }}
