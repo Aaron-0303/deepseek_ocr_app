@@ -7,8 +7,20 @@ import DOMPurify from 'dompurify'
 export default function ResultPanel({ result, loading, imagePreview, onCopy, onDownload }) {
   const canvasRef = useRef(null)
   const imgRef = useRef(null)
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
+  const [copied, setCopied] = useState(null)
+
+  const handleCopyClick = async (text, type) => {
+    try {
+      await onCopy(text)
+      setCopied(type)
+      window.setTimeout(() => setCopied(null), 1800)
+    } catch (err) {
+      console.error('Copy failed:', err)
+      setCopied('error')
+      window.setTimeout(() => setCopied(null), 1800)
+    }
+  }
 
   // Check if text looks like HTML (model outputs HTML, not markdown)
   const isHTML = result?.text && (
@@ -145,7 +157,7 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
   }, [imageLoaded, result, drawBoxes])
 
   return (
-    <div className="glass p-5 sm:p-6 space-y-4 min-h-[620px]">
+    <div className="glass p-5 sm:p-6 space-y-4 min-h-[420px] sm:min-h-[620px]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="rounded-xl bg-blue-50 p-2 border border-blue-100">
@@ -160,17 +172,18 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
         {result && (
           <div className="flex gap-2">
             <motion.button
-              onClick={onCopy}
-              className="glass glass-hover p-2 rounded-lg"
+              onClick={() => handleCopyClick(result.text, 'result')}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-slate-600 transition hover:border-blue-200 hover:text-blue-700"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              title="Copy to clipboard"
+              title="复制处理结果"
             >
-              <Copy className="w-4 h-4" />
+              {copied === 'result' ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              <span className="hidden text-xs sm:inline">{copied === 'result' ? '已复制' : copied === 'error' ? '复制失败' : '复制'}</span>
             </motion.button>
             <motion.button
               onClick={onDownload}
-              className="glass glass-hover p-2 rounded-lg"
+              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-blue-200 hover:text-blue-700"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               title="Download"
@@ -212,22 +225,24 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
           >
             {/* Preview with boxes */}
             {imagePreview && result.boxes && result.boxes.length > 0 && (
-              <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900">
-                <img 
-                  ref={imgRef}
-                  src={imagePreview} 
-                  alt="Result" 
-                  className="w-full block" 
-                  onLoad={() => {
-                    console.log('🖼️ Image loaded, triggering draw')
-                    setImageLoaded(true)
-                  }}
-                />
-                <canvas 
-                  ref={canvasRef}
-                  className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                  style={{ display: 'block' }}
-                />
+              <div className="flex max-h-[540px] justify-center overflow-auto rounded-xl border border-slate-200 bg-slate-900 p-2">
+                <div className="relative inline-block max-w-full">
+                  <img
+                    ref={imgRef}
+                    src={imagePreview}
+                    alt="Result"
+                    className="block max-h-[520px] w-auto max-w-full object-contain"
+                    onLoad={() => {
+                      console.log('🖼️ Image loaded, triggering draw')
+                      setImageLoaded(true)
+                    }}
+                  />
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute inset-0 h-full w-full pointer-events-none"
+                    style={{ display: 'block' }}
+                  />
+                </div>
               </div>
             )}
 
@@ -255,26 +270,26 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
             {/* Raw Response Viewer */}
             {result.raw_text && (
               <details className="glass rounded-xl overflow-hidden">
-                <summary className="px-4 py-3 cursor-pointer flex items-center justify-between hover:bg-white/5 transition-colors">
-                  <span className="text-sm font-medium text-gray-300">🔍 Raw Model Response</span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                <summary className="px-4 py-3 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition-colors">
+                  <span className="text-sm font-medium text-slate-700">Raw Model Response</span>
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
                 </summary>
-                <div className="px-4 py-3 border-t border-white/10 space-y-2">
-                  <p className="text-xs text-gray-400 mb-2">Unprocessed output from the model (useful for debugging)</p>
-                  <div className="bg-black/30 rounded-lg p-3 max-h-64 overflow-y-auto">
-                    <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap break-words select-all">
+                <div className="px-4 py-3 border-t border-slate-200 space-y-2">
+                  <p className="text-xs text-slate-500 mb-2">模型返回的原始内容</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-64 overflow-y-auto">
+                    <pre className="text-xs text-slate-700 font-mono whitespace-pre-wrap break-words select-all">
                       {result.raw_text}
                     </pre>
                   </div>
                   <div className="flex gap-2 mt-2">
                     <button
-                      onClick={() => navigator.clipboard.writeText(result.raw_text)}
-                      className="text-xs px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                      onClick={() => handleCopyClick(result.raw_text, 'raw')}
+                      className="text-xs px-3 py-1.5 border border-slate-200 bg-white hover:border-blue-200 hover:text-blue-700 rounded-lg transition-colors"
                     >
-                      Copy Raw
+                      {copied === 'raw' ? '已复制' : '复制原始内容'}
                     </button>
-                    <span className="text-xs text-gray-500 py-1">
-                      {result.raw_text.length} characters
+                    <span className="text-xs text-slate-400 py-1">
+                      {result.raw_text.length} 个字符
                     </span>
                   </div>
                 </div>
@@ -283,34 +298,34 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
 
             {/* Advanced Settings Dropdown */}
             <details className="glass rounded-xl overflow-hidden">
-              <summary className="px-4 py-3 cursor-pointer flex items-center justify-between hover:bg-white/5 transition-colors">
-                <span className="text-sm font-medium text-gray-300">⚙️ Metadata & Debug Info</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+              <summary className="px-4 py-3 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition-colors">
+                <span className="text-sm font-medium text-slate-700">Metadata & Debug Info</span>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
               </summary>
-              <div className="px-4 py-3 border-t border-white/10 space-y-3">
+              <div className="px-4 py-3 border-t border-slate-200 space-y-3">
                 {result.metadata && (
                   <div>
-                    <p className="text-xs text-gray-400 mb-2">Processing Metadata</p>
-                    <pre className="text-xs text-gray-500 whitespace-pre-wrap">
+                    <p className="text-xs text-slate-500 mb-2">Processing Metadata</p>
+                    <pre className="text-xs text-slate-600 whitespace-pre-wrap">
                       {JSON.stringify(result.metadata, null, 2)}
                     </pre>
                   </div>
                 )}
                 {result.boxes?.length > 0 && (
                   <div>
-                    <p className="text-xs text-gray-400 mb-2">Parsed Bounding Boxes ({result.boxes.length})</p>
-                    <div className="bg-black/30 rounded-lg p-2 space-y-1 max-h-32 overflow-y-auto">
+                    <p className="text-xs text-slate-500 mb-2">Parsed Bounding Boxes ({result.boxes.length})</p>
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-1 max-h-32 overflow-y-auto">
                       {result.boxes.map((box, idx) => (
                         <div key={idx} className="text-xs font-mono">
-                          <span className="text-cyan-400">Box {idx + 1}:</span>{' '}
-                          <span className="text-purple-400">{box.label}</span>{' '}
-                          <span className="text-gray-500">
+                          <span className="text-blue-600">Box {idx + 1}:</span>{' '}
+                          <span className="text-violet-600">{box.label}</span>{' '}
+                          <span className="text-slate-500">
                             [{box.box.map(n => Math.round(n)).join(', ')}]
                           </span>
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-slate-400 mt-2">
                       Coordinates are scaled from model output (0-999) to image pixels
                     </p>
                   </div>

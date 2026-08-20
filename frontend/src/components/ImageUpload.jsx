@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useDropzone } from 'react-dropzone'
-import { Upload, Image as ImageIcon, X, FileText, Clipboard } from 'lucide-react'
+import { Camera, Upload, Image as ImageIcon, X, FileText, Clipboard } from 'lucide-react'
 
 export default function ImageUpload({ onImageSelect, preview, fileType = 'image' }) {
   const onDrop = useCallback((acceptedFiles) => {
@@ -11,6 +11,12 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
   }, [onImageSelect])
 
   const isPDF = fileType === 'pdf'
+
+  const handleMobileFile = (event) => {
+    const file = event.target.files?.[0]
+    if (file) onImageSelect(file)
+    event.target.value = ''
+  }
 
   // Handle clipboard paste
   useEffect(() => {
@@ -71,20 +77,45 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
       </div>
 
       {!preview ? (
-        <motion.div
-          {...getRootProps()}
-          className={`
-            relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer
-            transition-all duration-300
-            ${isDragActive 
-              ? 'border-blue-500 bg-blue-50 shadow-[0_0_30px_rgba(59,130,246,0.12)]'
-              : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50'
-            }
-          `}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <input {...getInputProps()} />
+        <>
+          <div className="sm:hidden">
+            {isPDF ? (
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-4 text-sm font-semibold text-white shadow-lg shadow-blue-200">
+                <FileText className="h-5 w-5" />
+                选择 PDF 文件
+                <input type="file" accept="application/pdf" className="hidden" onChange={handleMobileFile} />
+              </label>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-blue-600 px-3 py-5 text-sm font-semibold text-white shadow-lg shadow-blue-200">
+                  <Camera className="h-6 w-6" />
+                  拍照识别
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleMobileFile} />
+                </label>
+                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-5 text-sm font-semibold text-slate-700">
+                  <ImageIcon className="h-6 w-6 text-blue-600" />
+                  从相册选择
+                  <input type="file" accept="image/*" className="hidden" onChange={handleMobileFile} />
+                </label>
+              </div>
+            )}
+            {!isPDF && <p className="mt-3 text-center text-xs text-slate-400">支持调用相机或从手机相册选择图片</p>}
+          </div>
+
+          <motion.div
+            {...getRootProps()}
+            className={`
+              relative hidden border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer
+              transition-all duration-300 sm:block
+              ${isDragActive
+                ? 'border-blue-500 bg-blue-50 shadow-[0_0_30px_rgba(59,130,246,0.12)]'
+                : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50'
+              }
+            `}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+          >
+            <input {...getInputProps()} />
           
           <div className="space-y-4">
             <motion.div
@@ -125,12 +156,13 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
               )}
             </div>
           </div>
-        </motion.div>
+          </motion.div>
+        </>
       ) : (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="relative group rounded-2xl overflow-hidden"
+          className="relative group rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 p-3"
         >
           {isPDF ? (
             <div className="flex items-center justify-center p-12 bg-blue-50 border border-blue-100 rounded-2xl">
@@ -144,7 +176,7 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
             <img
               src={preview}
               alt="Preview"
-              className="w-full rounded-2xl border border-slate-200"
+              className="mx-auto block max-h-[56vh] w-auto max-w-full rounded-xl object-contain sm:max-h-[520px]"
             />
           )}
           <div className="absolute top-3 right-3 flex gap-2">
@@ -159,7 +191,7 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
               title={isPDF ? "Remove PDF" : "Remove image"}
             >
               <X className="w-4 h-4" />
-              <span className="text-sm font-medium">Remove</span>
+              <span className="text-sm font-medium">移除</span>
             </motion.button>
           </div>
         </motion.div>

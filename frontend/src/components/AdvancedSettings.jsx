@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Sliders } from 'lucide-react'
 
-export default function AdvancedSettings({ settings, onSettingsChange, includeCaption, onIncludeCaptionChange }) {
+export default function AdvancedSettings({ compact = false, settings, onSettingsChange, includeCaption, onIncludeCaptionChange }) {
   const handleChange = (key, value) => {
     onSettingsChange({
       ...settings,
@@ -21,7 +21,7 @@ export default function AdvancedSettings({ settings, onSettingsChange, includeCa
         <h3 className="font-semibold text-slate-900">参数设置</h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-2'}`}>
         <div className="space-y-2">
           <label className="text-xs text-slate-500">基础尺寸</label>
           <input

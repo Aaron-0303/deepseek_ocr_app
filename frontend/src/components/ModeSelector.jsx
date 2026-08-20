@@ -9,6 +9,7 @@ const modes = [
 ]
 
 export default function ModeSelector({ 
+  compact = false,
   mode, 
   onModeChange, 
   prompt, 
@@ -20,13 +21,13 @@ export default function ModeSelector({
   const needsInput = selectedMode?.needsInput
 
   return (
-    <div className="glass p-5 space-y-4">
+    <div className={compact ? 'rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4' : 'glass p-5 space-y-4'}>
       <div>
         <p className="section-label">识别模式</p>
-        <h3 className="text-base font-semibold text-slate-950">选择模型处理文件的方式</h3>
+        <h3 className={`${compact ? 'text-sm' : 'text-base'} font-semibold text-slate-950`}>选择模型处理文件的方式</h3>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className={`grid grid-cols-2 gap-2 ${compact ? '' : 'sm:grid-cols-4'}`}>
         {modes.map((m) => {
           const Icon = m.icon
           const isSelected = mode === m.id
