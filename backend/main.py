@@ -34,6 +34,22 @@ tokenizer = None
 model_status = "loading_cpu"
 model_message = "Starting model load into CPU memory"
 model_lock = asyncio.Lock()
+pdf_progress_jobs: Dict[str, Dict[str, Any]] = {}
+
+
+def _set_pdf_progress(job_id: str, **updates):
+    """Store progress for a PDF job. Empty IDs keep older clients compatible."""
+    if not job_id:
+        return
+
+    current = pdf_progress_jobs.setdefault(job_id, {
+        "status": "processing",
+        "progress": 0,
+        "current_page": 0,
+        "total_pages": 0,
+        "message": "正在准备 PDF",
+    })
+    current.update(updates)
 
 
 def _cuda_memory_mb():
@@ -469,9 +485,24 @@ async def ocr_inference(
         if out_dir:
             shutil.rmtree(out_dir, ignore_errors=True)
 
+@app.get("/api/process-pdf/progress/{job_id}")
+async def get_pdf_progress(job_id: str):
+    progress = pdf_progress_jobs.get(job_id)
+    if progress is None:
+        return {
+            "status": "waiting",
+            "progress": 0,
+            "current_page": 0,
+            "total_pages": 0,
+            "message": "等待服务器接收 PDF",
+        }
+    return progress
+
+
 @app.post("/api/process-pdf")
 async def process_pdf(
     pdf_file: UploadFile = File(...),
+    job_id: str = Form(""),
     mode: str = Form("plain_ocr"),
     prompt: str = Form(""),
     output_format: str = Form("markdown"),
@@ -490,11 +521,29 @@ async def process_pdf(
         raise HTTPException(status_code=400, detail="Invalid output format. Must be: markdown, html, docx, or json")
 
     try:
+        _set_pdf_progress(
+            job_id,
+            status="processing",
+            progress=1,
+            current_page=0,
+            total_pages=0,
+            message="正在读取 PDF",
+        )
         pdf_bytes = await pdf_file.read()
 
         print(f"📄 Converting PDF to images (DPI: {dpi})...")
-        images = pdf_to_images_high_quality(pdf_bytes, dpi=dpi)
+        _set_pdf_progress(job_id, progress=3, message="正在解析 PDF 页面")
+        images = await asyncio.to_thread(pdf_to_images_high_quality, pdf_bytes, dpi=dpi)
         total_pages = len(images)
+        if total_pages == 0:
+            raise HTTPException(status_code=400, detail="PDF 中没有可处理的页面")
+        _set_pdf_progress(
+            job_id,
+            progress=5,
+            current_page=0,
+            total_pages=total_pages,
+            message=f"已解析 {total_pages} 页，准备识别",
+        )
         print(f"✅ Converted {total_pages} pages")
 
         pages_content = []
@@ -502,6 +551,14 @@ async def process_pdf(
 
         for page_idx, img in enumerate(images):
             print(f"🔍 Processing page {page_idx + 1}/{total_pages}...")
+            current_page = page_idx + 1
+            _set_pdf_progress(
+                job_id,
+                progress=5 + round((page_idx / total_pages) * 90),
+                current_page=current_page,
+                total_pages=total_pages,
+                message=f"正在识别第 {current_page}/{total_pages} 页",
+            )
 
             prompt_text = build_prompt(
                 mode=mode,
@@ -522,7 +579,8 @@ async def process_pdf(
                 orig_w, orig_h = img.size
                 out_dir = tempfile.mkdtemp(prefix="dsocr_pdf_")
 
-                res = model.infer(
+                res = await asyncio.to_thread(
+                    model.infer,
                     tokenizer,
                     prompt=prompt_text,
                     image_file=tmp_img,
@@ -580,6 +638,13 @@ async def process_pdf(
                     'images': page_images,
                     'image_dims': {'w': orig_w, 'h': orig_h}
                 })
+                _set_pdf_progress(
+                    job_id,
+                    progress=5 + round((current_page / total_pages) * 90),
+                    current_page=current_page,
+                    total_pages=total_pages,
+                    message=f"已完成第 {current_page}/{total_pages} 页",
+                )
 
             finally:
                 if tmp_img:
@@ -591,8 +656,23 @@ async def process_pdf(
                     shutil.rmtree(out_dir, ignore_errors=True)
 
         print(f"✅ Processed all {total_pages} pages")
+        _set_pdf_progress(
+            job_id,
+            progress=98,
+            current_page=total_pages,
+            total_pages=total_pages,
+            message="正在生成输出文件",
+        )
 
         if output_format == "json":
+            _set_pdf_progress(
+                job_id,
+                status="completed",
+                progress=100,
+                current_page=total_pages,
+                total_pages=total_pages,
+                message="PDF 处理完成",
+            )
             return JSONResponse({
                 "success": True,
                 "total_pages": total_pages,
@@ -606,6 +686,14 @@ async def process_pdf(
             })
         elif output_format == "markdown":
             md_content = converter.to_markdown(pages_content, include_images=extract_images)
+            _set_pdf_progress(
+                job_id,
+                status="completed",
+                progress=100,
+                current_page=total_pages,
+                total_pages=total_pages,
+                message="PDF 处理完成",
+            )
             return StreamingResponse(
                 iter([md_content.encode('utf-8')]),
                 media_type="text/markdown",
@@ -613,6 +701,14 @@ async def process_pdf(
             )
         elif output_format == "html":
             html_content = converter.to_html(pages_content, include_images=extract_images)
+            _set_pdf_progress(
+                job_id,
+                status="completed",
+                progress=100,
+                current_page=total_pages,
+                total_pages=total_pages,
+                message="PDF 处理完成",
+            )
             return StreamingResponse(
                 iter([html_content.encode('utf-8')]),
                 media_type="text/html",
@@ -620,18 +716,28 @@ async def process_pdf(
             )
         elif output_format == "docx":
             docx_buffer = converter.to_docx(pages_content, include_images=extract_images)
+            _set_pdf_progress(
+                job_id,
+                status="completed",
+                progress=100,
+                current_page=total_pages,
+                total_pages=total_pages,
+                message="PDF 处理完成",
+            )
             return StreamingResponse(
                 docx_buffer,
                 media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 headers={"Content-Disposition": "attachment; filename=ocr_result.docx"}
             )
 
-    except HTTPException:
+    except HTTPException as e:
+        _set_pdf_progress(job_id, status="error", message=str(e.detail))
         raise
     except Exception as e:
         import traceback
         print(f"Error processing PDF: {e}")
         print(traceback.format_exc())
+        _set_pdf_progress(job_id, status="error", message="PDF 处理失败")
         raise HTTPException(status_code=500, detail="An internal error occurred during PDF processing.")
 
 if __name__ == "__main__":
