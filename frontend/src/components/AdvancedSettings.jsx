@@ -14,11 +14,11 @@ export default function AdvancedSettings({ settings, onSettingsChange, includeCa
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className="glass p-6 rounded-2xl space-y-4"
+      className="glass panel-glow p-6 rounded-2xl space-y-4"
     >
       <div className="flex items-center gap-2">
-        <Sliders className="w-5 h-5 text-purple-400" />
-        <h3 className="font-semibold text-gray-200">Advanced Settings</h3>
+        <Sliders className="w-5 h-5 text-cyan-300" />
+        <h3 className="font-semibold text-white">Advanced Settings</h3>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -28,7 +28,7 @@ export default function AdvancedSettings({ settings, onSettingsChange, includeCa
             type="number"
             value={settings.base_size}
             onChange={(e) => handleChange('base_size', parseInt(e.target.value))}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+            className="w-full bg-slate-950/60 border border-cyan-100/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-300/50"
           />
         </div>
 
@@ -38,7 +38,7 @@ export default function AdvancedSettings({ settings, onSettingsChange, includeCa
             type="number"
             value={settings.image_size}
             onChange={(e) => handleChange('image_size', parseInt(e.target.value))}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+            className="w-full bg-slate-950/60 border border-cyan-100/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-300/50"
           />
         </div>
 
@@ -47,7 +47,7 @@ export default function AdvancedSettings({ settings, onSettingsChange, includeCa
           <select
             value={settings.crop_mode ? 'true' : 'false'}
             onChange={(e) => handleChange('crop_mode', e.target.value === 'true')}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+            className="w-full bg-slate-950/60 border border-cyan-100/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-300/50"
           >
             <option value="true">Enabled</option>
             <option value="false">Disabled</option>
@@ -59,7 +59,7 @@ export default function AdvancedSettings({ settings, onSettingsChange, includeCa
           <select
             value={settings.test_compress ? 'true' : 'false'}
             onChange={(e) => handleChange('test_compress', e.target.value === 'true')}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+            className="w-full bg-slate-950/60 border border-cyan-100/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-300/50"
           >
             <option value="false">Disabled</option>
             <option value="true">Enabled</option>
@@ -73,7 +73,7 @@ export default function AdvancedSettings({ settings, onSettingsChange, includeCa
             type="checkbox"
             checked={includeCaption}
             onChange={(e) => onIncludeCaptionChange(e.target.checked)}
-            className="accent-purple-500"
+            className="accent-cyan-400"
           />
           <span className="text-sm text-gray-300">Include image caption</span>
         </label>
