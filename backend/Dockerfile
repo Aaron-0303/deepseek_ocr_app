@@ -3,13 +3,15 @@ FROM nvcr.io/nvidia/pytorch:25.09-py3
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
+    PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
     HF_HOME=/models
 
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies from the Tsinghua PyPI mirror
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN python -m pip install --upgrade pip && \
+    python -m pip install -r requirements.txt
 
 # Copy backend code
 COPY *.py .
