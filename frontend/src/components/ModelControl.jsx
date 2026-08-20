@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Cpu, HardDrive, Loader2, RefreshCw, TriangleAlert, Zap } from 'lucide-react'
+import { Cpu, HardDrive, Loader2, RefreshCw, AlertTriangle, Zap } from 'lucide-react'
 import axios from 'axios'
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
@@ -130,7 +130,7 @@ function ModelControl() {
 
       {error && (
         <div className="mt-3 flex items-start gap-2 text-xs text-red-300">
-          <TriangleAlert className="w-4 h-4 flex-shrink-0" />
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
         </div>
       )}
