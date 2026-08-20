@@ -51,6 +51,10 @@ function ModelControl() {
   const gpuReady = status?.status === 'gpu_ready'
   const cpuReady = status?.status === 'cpu_ready'
   const unavailable = !status || !!error
+  const gpuUsedMb = Number(status?.cuda_used_mb || 0)
+  const gpuTotalMb = Number(status?.cuda_total_mb || 0)
+  const gpuPercent = gpuTotalMb > 0 ? Math.min(100, (gpuUsedMb / gpuTotalMb) * 100) : 0
+  const formatMemory = (mb) => mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -68,11 +72,27 @@ function ModelControl() {
           <p className="mt-1 text-xs text-slate-500">
             {status?.device ? `设备：${status.device.toUpperCase()}` : '等待状态返回'}
           </p>
-          {status?.cuda_allocated_mb != null && (
-            <p className="mt-1 text-xs text-slate-400">显存 {status.cuda_allocated_mb} MB · 缓存 {status.cuda_reserved_mb} MB</p>
-          )}
         </div>
       </div>
+
+      {gpuTotalMb > 0 && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+          <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+            <span className="font-medium text-slate-600">GPU 显存</span>
+            <span className="font-semibold text-slate-800">{formatMemory(gpuUsedMb)} / {formatMemory(gpuTotalMb)}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${gpuPercent >= 85 ? 'bg-red-500' : gpuPercent >= 70 ? 'bg-amber-500' : 'bg-gradient-to-r from-cyan-500 to-blue-600'}`}
+              style={{ width: `${gpuPercent}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+            <span>当前 GPU 总占用</span>
+            <span>{gpuPercent.toFixed(1)}%</span>
+          </div>
+        </div>
+      )}
 
       {transitioning && (
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200">
