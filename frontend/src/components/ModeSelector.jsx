@@ -20,10 +20,13 @@ export default function ModeSelector({
   const needsInput = selectedMode?.needsInput
 
   return (
-    <div className="glass p-4 rounded-2xl space-y-3">
-      <h3 className="text-sm font-semibold text-gray-200">Mode</h3>
+    <div className="glass panel-glow p-5 rounded-2xl space-y-4">
+      <div>
+        <p className="panel-label">Recognition mode</p>
+        <h3 className="text-base font-semibold text-white">Choose how AI reads your file</h3>
+      </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {modes.map((m) => {
           const Icon = m.icon
           const isSelected = mode === m.id
@@ -35,8 +38,8 @@ export default function ModeSelector({
               className={`
                 relative p-2 rounded-xl text-center transition-all
                 ${isSelected 
-                  ? 'glass border-white/20 shadow-lg' 
-                  : 'bg-white/5 border border-white/10 hover:border-white/20'
+                  ? 'border border-cyan-200/30 bg-cyan-300/10 shadow-lg shadow-cyan-950/30'
+                  : 'bg-white/[0.035] border border-white/10 hover:border-cyan-200/20 hover:bg-white/[0.06]'
                 }
               `}
               whileHover={{ scale: 1.05 }}
@@ -54,8 +57,8 @@ export default function ModeSelector({
                 <div className={`
                   w-8 h-8 mx-auto rounded-lg flex items-center justify-center
                   ${isSelected 
-                    ? `bg-gradient-to-br ${m.color}` 
-                    : 'bg-white/10'
+                    ? `bg-gradient-to-br ${m.color} shadow-lg`
+                    : 'bg-slate-800'
                   }
                 `}>
                   <Icon className="w-4 h-4" />
@@ -80,7 +83,7 @@ export default function ModeSelector({
             value={findTerm}
             onChange={(e) => onFindTermChange(e.target.value)}
             placeholder="Enter term to find (e.g., Total, Invoice #)"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500 transition-colors"
+            className="w-full bg-slate-950/60 border border-cyan-100/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/10 transition-colors"
           />
         </motion.div>
       )}
@@ -95,7 +98,7 @@ export default function ModeSelector({
             value={prompt}
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder="Enter your custom prompt..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-purple-500 transition-colors resize-none"
+            className="w-full bg-slate-950/60 border border-cyan-100/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-300/50 focus:ring-2 focus:ring-cyan-300/10 transition-colors resize-none"
             rows={2}
           />
         </motion.div>
