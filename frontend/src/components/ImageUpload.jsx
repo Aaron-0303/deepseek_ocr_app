@@ -80,22 +80,22 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
         <>
           <div className="sm:hidden">
             {isPDF ? (
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-4 text-sm font-semibold text-white shadow-lg shadow-blue-200">
+              <label className="relative flex cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-2xl bg-blue-600 px-4 py-4 text-sm font-semibold text-white shadow-lg shadow-blue-200">
                 <FileText className="h-5 w-5" />
                 选择 PDF 文件
-                <input type="file" accept="application/pdf" className="hidden" onChange={handleMobileFile} />
+                <input type="file" accept="application/pdf" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" onChange={handleMobileFile} />
               </label>
             ) : (
               <div className="grid grid-cols-2 gap-3">
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-blue-600 px-3 py-5 text-sm font-semibold text-white shadow-lg shadow-blue-200">
+                <label className="relative flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-blue-600 px-3 py-5 text-sm font-semibold text-white shadow-lg shadow-blue-200">
                   <Camera className="h-6 w-6" />
                   拍照识别
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleMobileFile} />
+                  <input type="file" accept="image/*" capture="environment" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" onChange={handleMobileFile} />
                 </label>
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-5 text-sm font-semibold text-slate-700">
+                <label className="relative flex cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 px-3 py-5 text-sm font-semibold text-slate-700">
                   <ImageIcon className="h-6 w-6 text-blue-600" />
                   从相册选择
-                  <input type="file" accept="image/*" className="hidden" onChange={handleMobileFile} />
+                  <input type="file" accept="image/*" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" onChange={handleMobileFile} />
                 </label>
               </div>
             )}
