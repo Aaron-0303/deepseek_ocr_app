@@ -145,11 +145,16 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
   }, [imageLoaded, result, drawBoxes])
 
   return (
-    <div className="glass p-6 rounded-2xl space-y-4 h-full">
+    <div className="glass panel-glow p-5 sm:p-6 rounded-2xl space-y-4 h-full min-h-[620px]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-purple-400" />
-          <h3 className="font-semibold text-gray-200">Results</h3>
+          <div className="rounded-xl bg-cyan-300/10 p-2 border border-cyan-200/15">
+            <Sparkles className="w-5 h-5 text-cyan-200" />
+          </div>
+          <div>
+            <p className="panel-label !mb-0">AI output</p>
+            <h3 className="font-semibold text-white">Recognition results</h3>
+          </div>
         </div>
         
         {result && (
@@ -189,9 +194,9 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 border-4 border-purple-500/20 border-t-purple-500 rounded-full"
+                className="w-16 h-16 border-4 border-cyan-300/15 border-t-cyan-300 rounded-full shadow-[0_0_30px_rgba(34,211,238,0.15)]"
               />
-              <Loader2 className="w-8 h-8 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-purple-400" />
+              <Loader2 className="w-8 h-8 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-cyan-200" />
             </div>
             <p className="text-sm text-gray-400 animate-pulse">
               Processing your image with AI magic...
@@ -227,7 +232,7 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
             )}
 
             {/* Text result */}
-            <div className="bg-white/5 border border-white/10 rounded-xl p-4 max-h-96 overflow-y-auto">
+            <div className="bg-slate-950/60 border border-cyan-100/10 rounded-xl p-5 max-h-[32rem] overflow-y-auto shadow-inner">
               {isHTML ? (
                 <div 
                   className="prose prose-invert prose-sm max-w-none"
@@ -338,15 +343,15 @@ export default function ResultPanel({ result, loading, imagePreview, onCopy, onD
                   opacity: [0.5, 0.8, 0.5]
                 }}
                 transition={{ duration: 3, repeat: Infinity }}
-                className="w-20 h-20 bg-purple-500/20 rounded-full blur-xl"
+                className="w-20 h-20 bg-cyan-300/25 rounded-full blur-xl"
               />
-              <Sparkles className="w-10 h-10 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-purple-400" />
+              <Sparkles className="w-10 h-10 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-cyan-200" />
             </div>
             <div className="text-center">
-              <p className="text-lg font-medium text-gray-300">
+              <p className="text-lg font-semibold text-white">
                 Ready to process
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-slate-400 mt-1">
                 Upload an image and hit analyze to see the magic!
               </p>
             </div>
