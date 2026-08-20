@@ -55,15 +55,15 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
   })
 
   return (
-    <div className="glass p-6 rounded-2xl space-y-4">
+    <div className="glass panel-glow p-5 sm:p-6 rounded-2xl space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-200">
+        <h3 className="font-semibold text-white">
           {isPDF ? 'Upload PDF' : 'Upload Image'}
         </h3>
         {isPDF ? (
-          <FileText className="w-5 h-5 text-purple-400" />
+          <FileText className="w-5 h-5 text-cyan-300" />
         ) : (
-          <ImageIcon className="w-5 h-5 text-purple-400" />
+          <ImageIcon className="w-5 h-5 text-cyan-300" />
         )}
       </div>
 
@@ -74,8 +74,8 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
             relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer
             transition-all duration-300
             ${isDragActive 
-              ? 'border-purple-500 bg-purple-500/10' 
-              : 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10'
+              ? 'border-cyan-300 bg-cyan-300/10 shadow-[0_0_35px_rgba(34,211,238,0.12)]'
+              : 'border-cyan-100/15 bg-slate-950/35 hover:border-cyan-300/40 hover:bg-cyan-300/[0.06]'
             }
           `}
           whileHover={{ scale: 1.02 }}
@@ -92,15 +92,15 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
               className="flex justify-center"
             >
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-2xl blur-xl opacity-50" />
-                <div className="relative bg-gradient-to-br from-purple-600 to-cyan-500 p-4 rounded-2xl">
+                <div className="absolute inset-0 bg-cyan-300 rounded-2xl blur-xl opacity-40" />
+                <div className="relative bg-gradient-to-br from-cyan-300 via-sky-400 to-blue-600 p-4 rounded-2xl text-slate-950 shadow-xl shadow-cyan-500/20">
                   <Upload className="w-8 h-8" />
                 </div>
               </div>
             </motion.div>
             
             <div>
-              <p className="text-lg font-medium text-gray-200">
+              <p className="text-lg font-semibold text-white">
                 {isDragActive
                   ? 'Drop it like it\'s hot! 🔥'
                   : isPDF
@@ -108,14 +108,14 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
                     : 'Drag & drop your image'
                 }
               </p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-slate-400 mt-1">
                 {isPDF
                   ? 'or click to browse • PDF files up to 100MB'
                   : 'or click to browse • PNG, JPG, WEBP up to 10MB'
                 }
               </p>
               {!isPDF && (
-                <p className="text-xs text-purple-400 mt-2 flex items-center justify-center gap-1.5">
+                <p className="text-xs text-cyan-300 mt-2 flex items-center justify-center gap-1.5">
                   <Clipboard className="w-3.5 h-3.5" />
                   <span>Press Ctrl+V to paste from clipboard</span>
                 </p>
@@ -130,9 +130,9 @@ export default function ImageUpload({ onImageSelect, preview, fileType = 'image'
           className="relative group rounded-2xl overflow-hidden"
         >
           {isPDF ? (
-            <div className="flex items-center justify-center p-12 bg-white/5 border border-white/10 rounded-2xl">
+            <div className="flex items-center justify-center p-12 bg-cyan-300/[0.04] border border-cyan-100/15 rounded-2xl">
               <div className="text-center">
-                <FileText className="w-16 h-16 mx-auto mb-3 text-purple-400" />
+                <FileText className="w-16 h-16 mx-auto mb-3 text-cyan-300" />
                 <p className="text-sm text-gray-300 font-medium">PDF Ready</p>
                 <p className="text-xs text-gray-500 mt-1">{preview?.name || 'Document loaded'}</p>
               </div>
