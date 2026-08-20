@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, Image as ImageIcon, Loader2, Settings, Sparkles, Zap } from 'lucide-react'
+import { FileText, Image as ImageIcon, Loader2, Menu, Sparkles, X, Zap } from 'lucide-react'
 import axios from 'axios'
 import AdvancedSettings from './components/AdvancedSettings'
 import ImageUpload from './components/ImageUpload'
@@ -19,6 +19,7 @@ function App() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [includeCaption, setIncludeCaption] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [findTerm, setFindTerm] = useState('')
@@ -28,6 +29,13 @@ function App() {
     crop_mode: true,
     test_compress: false,
   })
+
+  useEffect(() => {
+    document.body.style.overflow = mobileSidebarOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileSidebarOpen])
 
   const handleFileTypeChange = useCallback((newType) => {
     setImage(null)
@@ -124,16 +132,33 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <aside className="sidebar fixed inset-y-0 left-0 z-40 hidden w-[340px] lg:block">
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          aria-label="关闭侧边栏"
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] lg:hidden"
+        />
+      )}
+
+      <aside className={`sidebar fixed inset-y-0 left-0 z-50 w-[min(340px,88vw)] transform transition-transform duration-300 lg:w-[340px] lg:translate-x-0 ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-full flex-col">
-          <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-6">
+          <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-5">
             <div className="rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 p-2.5 text-white shadow-lg shadow-blue-200">
               <Sparkles className="h-6 w-6" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h1 className="text-lg font-bold tracking-tight text-slate-950">DeepSeek OCR</h1>
               <p className="text-xs text-slate-500">智能文档识别工作台</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(false)}
+              className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+              aria-label="关闭侧边栏"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           <div className="space-y-7 overflow-y-auto px-5 py-6">
@@ -141,14 +166,20 @@ function App() {
               <p className="section-label">输入类型</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleFileTypeChange('image')}
+                  onClick={() => {
+                    handleFileTypeChange('image')
+                    setMobileSidebarOpen(false)
+                  }}
                   className={`sidebar-option ${fileType === 'image' ? 'sidebar-option-active' : ''}`}
                 >
                   <ImageIcon className="h-5 w-5" />
                   <span>图片</span>
                 </button>
                 <button
-                  onClick={() => handleFileTypeChange('pdf')}
+                  onClick={() => {
+                    handleFileTypeChange('pdf')
+                    setMobileSidebarOpen(false)
+                  }}
                   className={`sidebar-option ${fileType === 'pdf' ? 'sidebar-option-active' : ''}`}
                 >
                   <FileText className="h-5 w-5" />
@@ -195,9 +226,19 @@ function App() {
       <main className="lg:pl-[340px]">
         <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 px-5 py-4 backdrop-blur-xl sm:px-8">
           <div className="mx-auto flex max-w-[1500px] items-center justify-between">
-            <div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm lg:hidden"
+                aria-label="打开侧边栏"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div>
               <p className="text-sm font-semibold text-slate-950">识别工作台</p>
               <p className="mt-0.5 text-xs text-slate-500">上传文件并选择识别方式</p>
+              </div>
             </div>
             <div className="hidden items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 sm:flex">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -215,51 +256,6 @@ function App() {
               </h2>
             </div>
             <p className="text-sm text-slate-500">上传文件后可调整识别模式和高级参数</p>
-          </div>
-
-          <div className="mb-5 space-y-3 lg:hidden">
-            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-              <button
-                onClick={() => handleFileTypeChange('image')}
-                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold ${fileType === 'image' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}
-              >
-                <ImageIcon className="h-4 w-4" />图片
-              </button>
-              <button
-                onClick={() => handleFileTypeChange('pdf')}
-                className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold ${fileType === 'pdf' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}
-              >
-                <FileText className="h-4 w-4" />PDF
-              </button>
-            </div>
-
-            <details className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-4">
-                <div className="flex items-center gap-3">
-                  <Settings className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-semibold text-slate-900">识别模式与高级设置</span>
-                </div>
-                <span className="text-xs text-blue-600">展开</span>
-              </summary>
-              <div className="space-y-4 border-t border-slate-100 p-4">
-                <ModeSelector
-                  mode={mode}
-                  onModeChange={setMode}
-                  prompt={prompt}
-                  onPromptChange={setPrompt}
-                  findTerm={findTerm}
-                  onFindTermChange={setFindTerm}
-                />
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <AdvancedSettings
-                    settings={advancedSettings}
-                    onSettingsChange={setAdvancedSettings}
-                    includeCaption={includeCaption}
-                    onIncludeCaptionChange={setIncludeCaption}
-                  />
-                </div>
-              </div>
-            </details>
           </div>
 
           <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
