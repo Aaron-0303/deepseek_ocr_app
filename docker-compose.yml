@@ -17,7 +17,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              device_ids: ["3"]
               capabilities: [gpu]
     shm_size: "4g"
     ports:
